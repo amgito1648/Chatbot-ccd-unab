@@ -14,8 +14,7 @@ Chatbot inteligente basado en arquitectura RAG que permite a estudiantes consult
 | **Groq** | Modelo de lenguaje (LLM) para el AI Agent |
 | **Google Sheets** | Calendario de eventos académicos |
 | **HuggingFace** | Embeddings para el sistema RAG |
-| **React 18** | Framework de interfaz de usuario |
-| **Vite** | Bundler y servidor de desarrollo |
+
 
 ---
 
