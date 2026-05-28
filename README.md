@@ -14,8 +14,8 @@ Chatbot inteligente basado en arquitectura RAG que permite a estudiantes consult
 | **Groq** | Modelo de lenguaje (LLM) para el AI Agent |
 | **Google Sheets** | Calendario de eventos académicos |
 | **HuggingFace** | Embeddings para el sistema RAG |
-| React 18 | Framework de interfaz de usuario |
-| Vite | Bundler y servidor de desarrollo |
+| **React 18** | Framework de interfaz de usuario |
+| **Vite** | Bundler y servidor de desarrollo |
 
 ---
 
@@ -204,6 +204,7 @@ ORDER BY pilar, fecha_inicio;
    - **Google Sheets API**
 3. Crear las credenciales de tipo **Service Account** y configurarlas en n8n.
 4. En Google Drive, crear un archivo de Google Sheets con una tabla que contenga los eventos académicos y sus fechas (ej. prueba diagnóstica, fechas de inscripción, etc.).
+   
 ![Datos en Google Sheets](images/img3.png)
 5. Compartir el archivo con la cuenta de servicio que Google Cloud generó para n8n.
 6. En n8n, agregar el nodo **Google Sheets** y vincularlo al AI Agent como herramienta.
