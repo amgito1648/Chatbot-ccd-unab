@@ -9,22 +9,22 @@ Chatbot inteligente basado en arquitectura RAG que permite a estudiantes consult
 | Herramienta | Uso |
 |---|---|
 | **n8n** | Orquestación de flujos y lógica del chatbot |
-| **PostgreSQL** | Base de datos institucional con datos de estudiantes |
+| **PostgreSQL (Supabase)** | Base de datos de estudiantes y cursos (réplica de la base del profesor) |
 | **Supabase** | Base de datos externa para noticias (Web Scraping) y documentos RAG |
-| **Groq** | Modelo de lenguaje (LLM) para el AI Agent |
+| **OpenAI (vía API de NVidia)** | Modelo de lenguaje (LLM) para el AI Agent |
 | **Google Sheets** | Calendario de eventos académicos |
 | **HuggingFace** | Embeddings para el sistema RAG |
-
 
 ---
 
 ## Arquitectura general
 
-El proyecto está compuesto por tres flujos en n8n:
+El proyecto está compuesto por cuatro flujos en n8n:
 
 1. **Flujo principal** — ChatBot con AI Agent, consultas a Postgres, Google Sheets y Supabase.
 2. **Flujo de Web Scraping** — Extracción automática de noticias del sitio web de la UNAB.
-3. **Flujo RAG** — Carga y vectorización de documentos institucionales en PDF.
+3. **Flujo RAG** — Carga y vectorización de documentos institucionales en PDF (workflow independiente del ChatBot principal, por indicación del profesor).
+4. Los tres workflows fueron trasladados a una instancia personal de n8n al cierre del servicio brindado por el profesor.
 
 ---
 
@@ -34,18 +34,23 @@ El proyecto está compuesto por tres flujos en n8n:
 
 1. Crear un nuevo workflow en n8n.
 2. Agregar el nodo **"When chat message received"** como trigger.
+
 ![Configuracion del trigger](images/img1.png)
+
 3. Conectarlo al nodo **AI Agent**.
 4. Vincular el AI Agent a:
-   - **Groq Chat Model**: agregar las credenciales de la API Key generada en [console.groq.com](https://console.groq.com) e indicar el modelo a utilizar, que el seleccionado para el proyecto fue el de llama-3.1-8b-instant.
+   - **OpenAI Chat Model (vía API de NVidia)**: agregar las credenciales de la API Key generada en [build.nvidia.com](https://build.nvidia.com). Se usa la API de NVidia como proveedor para evitar el límite de tokens de otros servicios, pero con un modelo compatible con OpenAI.
    - **Simple Memory**: para mantener el contexto de la conversación.
 
 ---
 
 ### 2. Conexión a la base de datos PostgreSQL
 
-1. En n8n, crear una credencial de tipo **Postgres** con los datos proporcionados por el profesor (host, puerto, usuario, contraseña y nombre de la base de datos).
+Dado que el servicio de n8n brindado por el profesor tenía fecha de cierre, se replicó la base de datos institucional en una segunda instancia de **Supabase** (diferente a la usada para noticias y RAG), cargando todos los datos originales. La credencial de Postgres en n8n se configuró apuntando a esta nueva base en Supabase.
+
+1. En n8n, crear una credencial de tipo **Postgres** con los datos de conexión de la nueva base en Supabase (host, puerto `6543`, usuario, contraseña y nombre de la base de datos).
 2. Verificar la conexión ejecutando una consulta de prueba (`SELECT * FROM estudiante LIMIT 5`).
+
 ![Consulta de prueba a Postgres](images/img2.png)
 
 ---
@@ -117,13 +122,13 @@ de competencias digitales.
 ```sql
 WITH cursos_aprobados_estudiante AS (
   SELECT rn.codigo_materia
-  FROM registro_nota rn
+  FROM registro_notas rn
   WHERE rn.id_estudiante = '{{ $fromAI("id_estudiante") }}'
     AND rn.nota = 'A'
 ),
 plan_estudiante AS (
   SELECT plan
-  FROM progreso_estudiante
+  FROM progreso_academico
   WHERE id_estudiante = '{{ $fromAI("id_estudiante") }}'
 ),
 cursos_por_pilar AS (
@@ -203,10 +208,12 @@ ORDER BY pilar, fecha_inicio;
    - **Google Sheets API**
 3. Crear las credenciales de tipo **Service Account** y configurarlas en n8n.
 4. En Google Drive, crear un archivo de Google Sheets con una tabla que contenga los eventos académicos y sus fechas (ej. prueba diagnóstica, fechas de inscripción, etc.).
-   
+
 ![Datos en Google Sheets](images/img3.png)
+
 5. Compartir el archivo con la cuenta de servicio que Google Cloud generó para n8n.
 6. En n8n, agregar el nodo **Google Sheets** y vincularlo al AI Agent como herramienta.
+
 ![Configuracion nodo Google Sheets](images/img4.png)
 
 ---
@@ -297,7 +304,7 @@ ORDER BY fecha DESC
 LIMIT 5;
 ```
 
-> **Importante:** La credencial de Postgres para este nodo debe apuntar a **Supabase** con el **puerto 6543**, no a la base de datos del profesor.
+> **Importante:** La credencial de Postgres para este nodo debe apuntar a **Supabase** con el **puerto 6543**, no a la base de datos con la información de los estudiantes.
 
 ---
 
@@ -331,13 +338,15 @@ El flujo sigue esta secuencia:
 5. **HuggingFace Embeddings** — Genera los embeddings de cada fragmento.
    - Para la API Key de HuggingFace, es necesario activar la opción de **Inference** en la configuración de la cuenta.
 
-![Agregar documento RAG](images/img7.png)
+![Flujo RAG](images/img7.jpeg)
 
-![Datos PDF en Supabase](images/img8.png)
+![Agregar documento RAG](images/img8.jpeg)
 
-#### 7.3 Vincular el RAG al flujo principal
+![Datos PDF en Supabase](images/img9.jpeg)
 
-En el flujo principal, agregar el nodo **"Consultar_Documentos_CCD"** (tipo Vector Store Tool con Postgres PGVector), conectándolo al AI Agent para que pueda responder preguntas basadas en los documentos cargados.
+#### 7.3 Separación del RAG del flujo principal
+
+Por indicación del profesor, el flujo RAG se mantuvo como un **workflow completamente independiente** del ChatBot principal. Por lo tanto, la carga de documentos se gestiona exclusivamente desde el workflow RAG separado.
 
 ---
 
@@ -347,102 +356,35 @@ En el flujo principal, agregar el nodo **"Consultar_Documentos_CCD"** (tipo Vect
 |---|---|
 | `estudiante` | Datos del estudiante (ID, nombre, programa, plan, semestre) |
 | `catalogo_materias_ccd` | Materias del CCD organizadas por pilar y plan |
-| `cursos_estudiantes` | Historial de cursos cursados por el estudiante |
-| `registro_nota` | Notas registradas (A = Aprobado, R = Reprobado) |
+| `cursos_estudiante` | Historial de cursos cursados por el estudiante |
+| `registro_notas` | Notas registradas (A = Aprobado, R = Reprobado) |
 | `oferta` | Cursos actualmente ofertados por el CCD |
-| `progreso_estudiante` | Vista consolidada del progreso por pilares |
+| `progreso_academico` | Vista consolidada del progreso por pilares |
 
 ---
 
-![Worflow completo](images/img9.png)
+![Worflow completo](images/img10.jpeg)
 
 ## Notas importantes
 
 - Las credenciales (API Keys, contraseñas de bases de datos, tokens de Google) **no se exportan** con el workflow de n8n. Al importar el `.json` en una nueva instancia, deben reconfigurarse manualmente.
 - Al migrar el workflow a otro servicio de n8n, recordar configurar la credencial de Supabase con el **puerto 6543** desde el inicio para evitar el error de conexiones máximas (`EMAXCONNSESSION`).
 - La cuenta de Google usada para Google Sheets tuvo que ser **personal**; ya que la institucional no permitía los permisos de Google Cloud necesarios.
+- Al cerrarse el servicio de n8n del profesor, los workflows se exportaron como `.json` y se importaron en una instancia personal de n8n, reconfigurando todas las credenciales.
+- La base de datos institucional también se replicó en Supabase al cierre del servicio, migrando todos los datos originales a una nueva instancia externa.
 
 ---
 
-## Despliegue — Interfaz web (React + Vite)
+## Despliegue — Interfaz del chatbot
 
-La interfaz del chatbot está desarrollada en **React + Vite** y se conecta al agente de n8n mediante un webhook.
+La interfaz del chatbot se despliega directamente desde n8n mediante la opción **Hosted Chat**, sin necesidad de instalar librerías externas ni frameworks adicionales. Esto fue necesario porque en los equipos de la universidad no era posible instalar las dependencias requeridas por React.
 
-### Prerrequisitos
+### Cómo acceder al Hosted Chat
 
-- [Node.js](https://nodejs.org) versión 18 o superior (incluye npm)
-- Visual Studio Code (recomendado)
+1. En el workflow principal, abrir el nodo **"When chat message received"** (trigger).
+2. En la configuración del nodo, ir a la pestaña **"Hosted Chat"**.
+3. n8n genera automáticamente una URL pública para acceder al chatbot desde cualquier navegador.
+4. Compartir esa URL con los estudiantes para que puedan interactuar con el chatbot sin ninguna instalación adicional.
+5. La URL del ChatBot es la siguiente: **https://ralph4533.app.n8n.cloud/webhook/71bcaedc-9c88-4af8-9679-2ef8f284d824/chat**
 
-Verifica tu instalación con:
-```bash
-node --version
-```
-
-### Instalación y ejecución
-
-**1. Crear el proyecto con Vite**
-```bash
-npm create vite@latest chatbot-ccd -- --template react
-```
-Cuando pregunte el framework selecciona **React**, luego **JavaScript**.
-
-**2. Entrar a la carpeta e instalar dependencias**
-```bash
-cd chatbot-ccd
-npm install
-```
-
-**3. Reemplazar el archivo principal**
-
-- Navega a `src/App.jsx`
-- Borra todo su contenido y pega el contenido del archivo `ChatbotCCD.jsx`
-
-**4. Configurar el proxy para evitar errores CORS**
-
-Reemplaza todo el contenido de `vite.config.js` con:
-```js
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    proxy: {
-      '/webhook': {
-        target: 'https://unab-n8n.duckdns.org:5678',
-        changeOrigin: true,
-        secure: false
-      }
-    }
-  }
-})
-```
-
-**5. Verificar la URL del webhook**
-
-En `src/App.jsx` asegúrate que la URL sea la relativa (sin dominio):
-```js
-const WEBHOOK_URL = "/webhook/71bcaedc-9c88-4af8-9679-2ef8f284d824/chat";
-```
-
-**6. Correr el proyecto**
-```bash
-npm run dev
-```
-
-Abrir en el navegador: `http://localhost:5173`
-
-### Estructura del proyecto
-
-```
-chatbot-ccd/
-├── src/
-│   ├── App.jsx          ← Componente principal del chatbot
-│   └── main.jsx         ← Punto de entrada de React
-├── vite.config.js       ← Configuración del proxy CORS
-├── package.json
-└── index.html
-```
-
-![Foto de react](images/img10.jpeg)
-
+![Chat URL](images/img11.jpeg)
