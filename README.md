@@ -35,7 +35,7 @@ El proyecto está compuesto por cuatro flujos en n8n:
 1. Crear un nuevo workflow en n8n.
 2. Agregar el nodo **"When chat message received"** como trigger.
 
-![Configuracion del trigger](images/img1.png)
+![Configuracion del trigger](images/images/img1.png)
 
 3. Conectarlo al nodo **AI Agent**.
 4. Vincular el AI Agent a:
@@ -51,7 +51,7 @@ Dado que el servicio de n8n brindado por el profesor tenía fecha de cierre, se 
 1. En n8n, crear una credencial de tipo **Postgres** con los datos de conexión de la nueva base en Supabase (host, puerto `6543`, usuario, contraseña y nombre de la base de datos).
 2. Verificar la conexión ejecutando una consulta de prueba (`SELECT * FROM estudiante LIMIT 5`).
 
-![Consulta de prueba a Postgres](images/img2.png)
+![Consulta de prueba a Postgres](images/images/img2.png)
 
 ---
 
@@ -209,12 +209,12 @@ ORDER BY pilar, fecha_inicio;
 3. Crear las credenciales de tipo **Service Account** y configurarlas en n8n.
 4. En Google Drive, crear un archivo de Google Sheets con una tabla que contenga los eventos académicos y sus fechas (ej. prueba diagnóstica, fechas de inscripción, etc.).
 
-![Datos en Google Sheets](images/img3.png)
+![Datos en Google Sheets](images/images/img3.png)
 
 5. Compartir el archivo con la cuenta de servicio que Google Cloud generó para n8n.
 6. En n8n, agregar el nodo **Google Sheets** y vincularlo al AI Agent como herramienta.
 
-![Configuracion nodo Google Sheets](images/img4.png)
+![Configuracion nodo Google Sheets](images/images/img4.png)
 
 ---
 
@@ -280,9 +280,9 @@ El flujo sigue esta secuencia de nodos:
    ```
 
 ---
-![Flujo del Web Scrapping](images/img5.png)
+![Flujo del Web Scrapping](images/images/img5.png)
 
-![Datos Noticias en Supabase](images/img6.png)
+![Datos Noticias en Supabase](images/images/img6.png)
 
 ### 6. Consulta de noticias en el flujo principal
 
@@ -338,11 +338,11 @@ El flujo sigue esta secuencia:
 5. **HuggingFace Embeddings** — Genera los embeddings de cada fragmento.
    - Para la API Key de HuggingFace, es necesario activar la opción de **Inference** en la configuración de la cuenta.
 
-![Flujo RAG](images/img7.jpeg)
+![Flujo RAG](images/images/img7.jpeg)
 
-![Agregar documento RAG](images/img8.jpeg)
+![Agregar documento RAG](images/images/img8.jpeg)
 
-![Datos PDF en Supabase](images/img9.jpeg)
+![Datos PDF en Supabase](images/images/img9.jpeg)
 
 #### 7.3 Separación del RAG del flujo principal
 
@@ -363,7 +363,7 @@ Por indicación del profesor, el flujo RAG se mantuvo como un **workflow complet
 
 ---
 
-![Worflow completo](images/img10.jpeg)
+![Worflow completo](images/images/img10.jpeg)
 
 ## Notas importantes
 
@@ -387,4 +387,4 @@ La interfaz del chatbot se despliega directamente desde n8n mediante la opción 
 4. Compartir esa URL con los estudiantes para que puedan interactuar con el chatbot sin ninguna instalación adicional.
 5. La URL del ChatBot es la siguiente: **https://ralph4533.app.n8n.cloud/webhook/71bcaedc-9c88-4af8-9679-2ef8f284d824/chat**
 
-![Chat URL](images/img11.jpeg)
+![Chat URL](images/images/img11.jpeg)
